@@ -1,0 +1,117 @@
+
+
+
+
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// MongoDB Model
+const Blog = mongoose.model('Blog', new mongoose.Schema({
+    title: String,
+    content: String,
+    createdAt: { type: Date, default: Date.now }
+}));
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/blogDB', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
+// CRUD API Endpoints
+app.get('/api/blogs', async (req, res) => {
+    const blogs = await Blog.find();
+    res.json(blogs);
+});
+
+app.post('/api/blogs', async (req, res) => {
+    const newBlog = new Blog(req.body);
+    await newBlog.save();
+    res.json(newBlog);
+});
+
+app.put('/api/blogs/:id', async (req, res) => {
+    const updatedBlog = await Blog.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedBlog);
+});
+
+app.delete('/api/blogs/:id', async (req, res) => {
+    await Blog.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted successfully' });
+});
+
+// Start Server
+app.listen(5000, () => console.log('Backend running on http://localhost:5000'));
+
+/////////////////////////////////////
+// Frontend (React.js Concept)
+/////////////////////////////////////
+
+// To keep things simple, assume React frontend code lives in 'public/index.html'
+
+/*
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Blog</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Blog Website</h1>
+
+    <form id="blogForm">
+        <input type="text" id="title" placeholder="Blog Title" required><br>
+        <textarea id="content" placeholder="Blog Content" required></textarea><br>
+        <button type="submit">Add Blog</button>
+    </form>
+
+    <div id="blogs"></div>
+
+    <script>
+        const form = document.getElementById('blogForm');
+        const blogsDiv = document.getElementById('blogs');
+
+        function fetchBlogs() {
+            axios.get('http://localhost:5000/api/blogs')
+                .then(res => {
+                    blogsDiv.innerHTML = '';
+                    res.data.forEach(blog => {
+                        blogsDiv.innerHTML += `
+                            <div>
+                                <h3>${blog.title}</h3>
+                                <p>${blog.content}</p>
+                                <button onclick="deleteBlog('${blog._id}')">Delete</button>
+                            </div>
+                        `;
+                    });
+                });
+        }
+
+        function deleteBlog(id) {
+            axios.delete(`http://localhost:5000/api/blogs/${id}`)
+                .then(fetchBlogs);
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+
+            axios.post('http://localhost:5000/api/blogs', { title, content })
+                .then(() => {
+                    form.reset();
+                    fetchBlogs();
+                });
+        });
+
+        fetchBlogs();
+    </script>
+</body>
+</html>
+*/
+
