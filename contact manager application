@@ -1,0 +1,122 @@
+/////////////////////////////////////
+// Backend (Node.js + Express + MongoDB)
+/////////////////////////////////////
+
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// MongoDB Model
+const Contact = mongoose.model('Contact', new mongoose.Schema({
+    name: String,
+    email: String,
+    phone: String
+}));
+
+mongoose.connect('mongodb://localhost:27017/contactDB', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
+// CRUD APIs
+app.get('/api/contacts', async (req, res) => {
+    const contacts = await Contact.find();
+    res.json(contacts);
+});
+
+app.post('/api/contacts', async (req, res) => {
+    const newContact = new Contact(req.body);
+    await newContact.save();
+    res.json(newContact);
+});
+
+app.put('/api/contacts/:id', async (req, res) => {
+    const updatedContact = await Contact.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedContact);
+});
+
+app.delete('/api/contacts/:id', async (req, res) => {
+    await Contact.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Contact deleted' });
+});
+
+app.listen(5000, () => console.log('Backend running on http://localhost:5000'));
+
+/////////////////////////////////////
+// Frontend (Simple HTML + JS)
+/////////////////////////////////////
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contact Management App</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Contact Management System</h1>
+
+    <form id="contactForm">
+        <input type="text" id="name" placeholder="Name" required><br><br>
+        <input type="email" id="email" placeholder="Email" required><br><br>
+        <input type="text" id="phone" placeholder="Phone" required><br><br>
+        <button type="submit">Add Contact</button>
+    </form>
+
+    <br><input type="text" id="search" placeholder="Search by name" oninput="fetchContacts()">
+
+    <hr>
+
+    <div id="contactsList"></div>
+
+    <script>
+        const form = document.getElementById('contactForm');
+        const contactsList = document.getElementById('contactsList');
+        const searchInput = document.getElementById('search');
+
+        function fetchContacts() {
+            const search = searchInput.value.toLowerCase();
+
+            axios.get('http://localhost:5000/api/contacts')
+                .then(res => {
+                    contactsList.innerHTML = '';
+                    res.data.filter(c => c.name.toLowerCase().includes(search)).forEach(contact => {
+                        contactsList.innerHTML += `
+                            <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+                                <h3>${contact.name}</h3>
+                                <p>Email: ${contact.email}</p>
+                                <p>Phone: ${contact.phone}</p>
+                                <button onclick="deleteContact('${contact._id}')">Delete</button>
+                            </div>
+                        `;
+                    });
+                });
+        }
+
+        function deleteContact(id) {
+            axios.delete(`http://localhost:5000/api/contacts/${id}`)
+                .then(fetchContacts);
+        }
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+
+            axios.post('http://localhost:5000/api/contacts', { name, email, phone })
+                .then(() => {
+                    form.reset();
+                    fetchContacts();
+                });
+        });
+
+        fetchContacts();
+    </script>
+</body>
+</html>
+
